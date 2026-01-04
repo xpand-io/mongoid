@@ -125,6 +125,13 @@ describe Mongoid::Boolean do
             expect(described_class.send(method, "off")).to eq(false)
           end
         end
+
+        context "when ''" do
+
+          it "returns false" do
+            expect(described_class.send(method, "")).to eq(false)
+          end
+        end
       end
     end
   end
