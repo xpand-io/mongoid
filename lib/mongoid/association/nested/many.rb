@@ -120,9 +120,20 @@ module Mongoid
         # @param [ Document ] parent The parent document.
         # @param [ Proxy ] relation The association proxy.
         # @param [ Document ] doc The doc to destroy.
+        # def destroy(parent, relation, doc)
+        #   doc.flagged_for_destroy = true
+        #   if !doc.embedded? || parent.new_record?
+        #     destroy_document(relation, doc)
+        #   else
+        #     parent.flagged_destroys.push(-> { destroy_document(relation, doc) })
+        #   end
+        # end
+
+        # [XPAND] Mongoid is currently saving the child documents when we try to assign nested attributes
+        # to a has many relation. This stops that from happening
         def destroy(parent, relation, doc)
           doc.flagged_for_destroy = true
-          if !doc.embedded? || parent.new_record?
+          if parent.new_record?
             destroy_document(relation, doc)
           else
             parent.flagged_destroys.push(-> { destroy_document(relation, doc) })
@@ -153,13 +164,20 @@ module Mongoid
         #
         # @param [ Document ] doc The document to update.
         # @param [ Hash ] attrs The attributes.
+        # def update_document(doc, attrs)
+        #   delete_id(attrs)
+        #   if association.embedded?
+        #     doc.assign_attributes(attrs)
+        #   else
+        #     doc.update_attributes(attrs)
+        #   end
+        # end
+
+        # [XPAND] Mongoid is currently saving the child documents when we try to assign nested attributes
+        # to a has many relation. This stops that from happening
         def update_document(doc, attrs)
-          delete_id(attrs)
-          if association.embedded?
-            doc.assign_attributes(attrs)
-          else
-            doc.update_attributes(attrs)
-          end
+          attrs.delete_id
+          doc.assign_attributes(attrs)
         end
 
         # Update nested association.
