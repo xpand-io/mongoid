@@ -100,6 +100,25 @@ module Mongoid
 
     attr_accessor :embedded, :klass, :parent_document, :association
 
+    # [Xpand] Copied from config/mongoid.rb
+    def in_batches_of(count = 100)
+      Enumerator.new do |y|
+        total = 0
+
+        loop do
+          batch = 0
+
+          limit(count).skip(total).each do |item|
+            total += 1
+            batch += 1
+            y << item
+          end
+
+          break if batch == 0
+        end
+      end
+    end
+
     # Returns true if the supplied +Enumerable+ or +Criteria+ is equal to the results
     # of this +Criteria+ or the criteria itself.
     #
