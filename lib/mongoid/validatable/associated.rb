@@ -74,8 +74,12 @@ module Mongoid
           # use map.all? instead of just all?, because all? will do short-circuit
           # evaluation and terminate on the first failed validation.
           list.map do |value|
-            if value && !value.flagged_for_destroy? && (!value.persisted? || value.changed?)
-              value.validated? ? true : value.valid?
+            if value && !value.flagged_for_destroy?
+              if !value.persisted? || value.changed? || has_unsaved_associations?(value)
+                value.validated? ? true : value.valid?
+              else
+                true
+              end
             else
               true
             end
@@ -123,6 +127,43 @@ module Mongoid
       # @return [ Array<Mongoid::Document> ] the target, as an array.
       def get_target_documents_for_other(target)
         Array.wrap(target)
+      end
+
+      # Check if a document has any unsaved (new or changed) associations.
+      # This is used to determine if a persisted, unchanged document should
+      # still be validated due to changes in its nested associations.
+      #
+      # @param [ Mongoid::Document ] document The document to check.
+      #
+      # @return [ Boolean ] true if the document has unsaved associations.
+      def has_unsaved_associations?(document)
+        document.relations.any? do |name, metadata|
+          next unless metadata.validate?
+
+          association = document.ivar(name)
+          next unless association
+
+          if association.respond_to?(:_target)
+            target = association._target
+
+            if target.respond_to?(:_loaded?)
+              # For has_many associations, only check in-memory documents
+              # to avoid loading all records from the database
+              docs = [*target._loaded.values, *target._added.values]
+              docs.any? { |doc| doc && (!doc.persisted? || doc.changed?) }
+            elsif target.respond_to?(:any?)
+              target.any? { |doc| doc && (!doc.persisted? || doc.changed?) }
+            elsif target
+              !target.persisted? || target.changed?
+            else
+              false
+            end
+          elsif association.is_a?(Mongoid::Document)
+            !association.persisted? || association.changed?
+          else
+            false
+          end
+        end
       end
     end
   end

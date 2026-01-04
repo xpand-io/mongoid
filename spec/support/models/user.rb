@@ -17,8 +17,10 @@ class User
   has_and_belongs_to_many :businesses, class_name: "Business", validate: false
   has_one :shop
 
+  has_many :xpand_modules, class_name: "Xpand::Module"
+
   belongs_to :next, class_name: "User"
 
-  accepts_nested_attributes_for :posts
+  accepts_nested_attributes_for :posts, :xpand_modules
   index name: 1
 end

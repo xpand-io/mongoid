@@ -91,6 +91,78 @@ describe Mongoid::Validatable::AssociatedValidator do
 
       end
 
+      context 'when grandchild documents are not valid' do
+        let(:user) do
+          User.new(name: "test")
+        end
+
+        context 'when replicating MONGOID-5905' do
+          context 'when assigning directly to the association' do
+            let(:xpand_module) { Xpand::Module.new(title: "Module 1") }
+            let(:xpand_task)   { Xpand::Task.new }
+
+            before do
+              xpand_module.xpand_tasks << xpand_task
+              user.xpand_modules << xpand_module
+
+              user.valid?
+            end
+
+            it "validates the grandchild documents" do
+              expect(user).to_not be_valid
+            end
+
+            it "adds the errors from the child relation" do
+              expect(user.errors[:xpand_modules]).to_not be_nil
+            end
+
+            it 'reports all failed validations' do
+              errors = user.xpand_modules.flat_map { |m| m.xpand_tasks.flat_map { |t| t.errors[:title] } }
+              expect(errors.length).to be == 1
+            end
+          end
+
+          context 'when creating a valid child and invalid grandchild using nested attributes' do
+            it 'raises an error' do
+              expect do
+                user.update!(
+                  xpand_modules_attributes: [
+                    {
+                      title: "Module 1",
+                      xpand_tasks_attributes: [
+                        {
+                          title: ""
+                        }
+                      ]
+                    }
+                  ]
+                )
+              end.to raise_error(Mongoid::Errors::Validations, /The following errors were found: Xpand modules is invalid/)
+            end
+          end
+
+          context 'when creating updating a valid child with an invalid grandchild using nested attributes' do
+            let(:xpand_module) { Xpand::Module.create(title: "Module 1", user: user) }
+
+            it 'raises an error' do
+              expect do
+                user.update!(
+                  xpand_modules_attributes: [
+                    {
+                      _id: xpand_module.id,
+                      xpand_tasks_attributes: [
+                        {
+                          title: ""
+                        }
+                      ]
+                    }
+                  ]
+                )
+              end.to raise_error(Mongoid::Errors::Validations, /The following errors were found: Xpand modules is invalid/)
+            end
+          end
+        end
+      end
     end
   end
 
