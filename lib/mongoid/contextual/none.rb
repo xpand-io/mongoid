@@ -16,6 +16,11 @@ module Mongoid
 
       attr_reader :criteria, :klass
 
+      # [Xpand] Copied from config/mongoid.rb
+      def add_to_set(*)
+        []
+      end
+
       # Check if the context is equal to the other object.
       #
       # @example Check equality.
