@@ -176,7 +176,7 @@ module Mongoid
         # [XPAND] Mongoid is currently saving the child documents when we try to assign nested attributes
         # to a has many relation. This stops that from happening
         def update_document(doc, attrs)
-          attrs.delete_id
+          delete_id(attrs)
           doc.assign_attributes(attrs)
         end
 
